@@ -1,0 +1,542 @@
+#include <iostream>
+#include <fstream>
+
+using namespace std;
+
+// Константы программы
+const int MAX_RECORDS = 1000;
+
+// Структура для хранения даты рождения
+struct Date {
+    int day;
+    int month;
+    int year;
+    
+    Date() : day(1), month(1), year(1900) {}
+};
+
+// Структура записи телефонного справочника
+struct PhoneRecord {
+    char name[100];
+    char category[50];
+    Date birthDate;
+    char phoneNumber[20];
+    
+    PhoneRecord() {
+        name[0] = '\0';
+        category[0] = '\0';
+        phoneNumber[0] = '\0';
+    }
+};
+
+// Структура для индекса по имени
+struct NameIndex {
+    int recordIndex;
+    char name[100];
+    
+    NameIndex() : recordIndex(-1) {
+        name[0] = '\0';
+    }
+};
+
+// Структура для индекса по возрасту
+struct AgeIndex {
+    int recordIndex;
+    int age;
+    
+    AgeIndex() : recordIndex(-1), age(0) {}
+};
+
+// Глобальные переменные
+PhoneRecord records[MAX_RECORDS];
+NameIndex nameIndex[MAX_RECORDS];
+AgeIndex ageIndex[MAX_RECORDS];
+int recordCount = 0;
+int nameIndexCount = 0;
+int ageIndexCount = 0;
+
+// Функция для копирования строки
+void copyString(char* dest, const char* src, int maxSize) {
+    int i;
+    for (i = 0; i < maxSize - 1 && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
+}
+
+// Функция для сравнения строк
+int compareStrings(const char* str1, const char* str2) {
+    int i = 0;
+    while (str1[i] != '\0' && str2[i] != '\0') {
+        if (str1[i] != str2[i]) {
+            return str1[i] - str2[i];
+        }
+        i++;
+    }
+    return str1[i] - str2[i];
+}
+
+// Функция преобразования строки в число
+int stringToInt(const char* str) {
+    int result = 0;
+    int i = 0;
+    while (str[i] != '\0') {
+        if (str[i] >= '0' && str[i] <= '9') {
+            result = result * 10 + (str[i] - '0');
+        }
+        i++;
+    }
+    return result;
+}
+
+// Функция для вычисления возраста
+int calculateAge(const Date& birthDate) {
+    // Текущий год: 2025
+    int currentYear = 2025;
+    
+    int age = currentYear - birthDate.year;
+    
+    return age;
+}
+
+// Функция для безопасного ввода целого числа
+int inputInt(const char* message, int minValue = 1) {
+    int value;
+    while (true) {
+        cout << message;
+        cin >> value;
+        if (cin.fail()) {
+            cout << "Ошибка! Введите целое число." << endl;
+            cin.clear();
+            while (cin.get() != '\n');
+        } else if (value < minValue) {
+            cout << "Значение должно быть не меньше " << minValue << "!" << endl;
+        } else {
+            cin.ignore(1000, '\n');
+            return value;
+        }
+    }
+}
+
+// Функция для безопасного ввода строки
+void inputString(const char* message, char* buffer, int bufferSize) {
+    cout << message;
+    cin.getline(buffer, bufferSize);
+    if (cin.fail()) {
+        cin.clear();
+        while (cin.get() != '\n');
+    }
+}
+
+// 1. Ввод данных с клавиатуры
+void inputRecordFromKeyboard() {
+    if (recordCount >= MAX_RECORDS) {
+        cout << "Достигнуто максимальное количество записей!" << endl;
+        return;
+    }
+    
+    PhoneRecord& record = records[recordCount];
+    
+    inputString("Введите имя: ", record.name, 100);
+    inputString("Введите категорию: ", record.category, 50);
+    
+    cout << "Введите дату рождения:" << endl;
+    record.birthDate.day = inputInt("  День: ", 1);
+    record.birthDate.month = inputInt("  Месяц: ", 1);
+    record.birthDate.year = inputInt("  Год: ", 1900);
+    
+    inputString("Введите номер телефона: ", record.phoneNumber, 20);
+    
+    recordCount++;
+    cout << "Запись добавлена!" << endl;
+}
+
+// 2. Вывод данных на экран
+void printRecord(const PhoneRecord& record, int index) {
+    cout << "Запись #" << index + 1 << ":" << endl;
+    cout << "  Имя: " << record.name << endl;
+    cout << "  Категория: " << record.category << endl;
+    cout << "  Дата рождения: " << record.birthDate.day << "." 
+         << record.birthDate.month << "." << record.birthDate.year << endl;
+    cout << "  Номер телефона: " << record.phoneNumber << endl;
+    cout << "  Возраст: " << calculateAge(record.birthDate) << " лет" << endl;
+    cout << "------------------------" << endl;
+}
+
+void displayAllRecords() {
+    if (recordCount == 0) {
+        cout << "Нет записей." << endl;
+        return;
+    }
+    
+    cout << "___Все записи___" << endl;
+    for (int i = 0; i < recordCount; i++) {
+        printRecord(records[i], i);
+    }
+}
+
+// 3. Сохранение в файл
+void saveToFile(const char* filename, bool append) {
+    ofstream file;
+    if (append) {
+        file.open(filename, ios::app);
+    } else {
+        file.open(filename);
+    }
+    
+    if (!file.is_open()) {
+        cout << "Ошибка открытия файла для записи!" << endl;
+        return;
+    }
+    
+    for (int i = 0; i < recordCount; i++) {
+        file << records[i].name << ";"
+             << records[i].category << ";"
+             << records[i].birthDate.day << ";"
+             << records[i].birthDate.month << ";"
+             << records[i].birthDate.year << ";"
+             << records[i].phoneNumber << endl;
+    }
+    
+    file.close();
+    cout << "Данные сохранены в файл!" << endl;
+}
+
+// 4. Загрузка из файла
+void loadFromFile(const char* filename) {
+    ifstream file(filename);
+    if (!file.is_open()) {
+        cout << "Ошибка открытия файла для чтения!" << endl;
+        return;
+    }
+    
+    int loadedCount = 0;
+    char line[256];
+    
+    while (file.getline(line, 256) && recordCount < MAX_RECORDS) {
+        PhoneRecord& record = records[recordCount];
+        
+        // Ручной разбор CSV строки
+        int field = 0;
+        int startPos = 0;
+        char fieldValue[100];
+        
+        for (int i = 0; ; i++) {
+            if (line[i] == ';' || line[i] == '\0') {
+                // Копируем поле
+                int length = i - startPos;
+                for (int j = 0; j < length; j++) {
+                    fieldValue[j] = line[startPos + j];
+                }
+                fieldValue[length] = '\0';
+                
+                // Сохраняем в соответствующее поле
+                switch (field) {
+                    case 0: copyString(record.name, fieldValue, 100); break;
+                    case 1: copyString(record.category, fieldValue, 50); break;
+                    case 2: record.birthDate.day = stringToInt(fieldValue); break;
+                    case 3: record.birthDate.month = stringToInt(fieldValue); break;
+                    case 4: record.birthDate.year = stringToInt(fieldValue); break;
+                    case 5: copyString(record.phoneNumber, fieldValue, 20); break;
+                }
+                
+                field++;
+                startPos = i + 1;
+                
+                if (line[i] == '\0') break;
+            }
+        }
+        
+        recordCount++;
+        loadedCount++;
+    }
+    
+    file.close();
+    cout << "Загружено " << loadedCount << " записей из файла." << endl;
+}
+
+// Пузырьковая сортировка для индекса по имени
+void bubbleSortNameIndex() {
+    for (int i = 0; i < nameIndexCount - 1; i++) {
+        for (int j = 0; j < nameIndexCount - i - 1; j++) {
+            if (compareStrings(nameIndex[j].name, nameIndex[j+1].name) > 0) {
+                NameIndex temp = nameIndex[j];
+                nameIndex[j] = nameIndex[j+1];
+                nameIndex[j+1] = temp;
+            }
+        }
+    }
+}
+
+// Быстрая сортировка для индекса по возрасту
+void quickSortAgeIndex(int low, int high) {
+    if (low < high) {
+        int pivot = ageIndex[high].age;
+        int i = low - 1;
+        
+        for (int j = low; j < high; j++) {
+            if (ageIndex[j].age <= pivot) {
+                i++;
+                AgeIndex temp = ageIndex[i];
+                ageIndex[i] = ageIndex[j];
+                ageIndex[j] = temp;
+            }
+        }
+        
+        AgeIndex temp = ageIndex[i + 1];
+        ageIndex[i + 1] = ageIndex[high];
+        ageIndex[high] = temp;
+        
+        int pi = i + 1;
+        quickSortAgeIndex(low, pi - 1);
+        quickSortAgeIndex(pi + 1, high);
+    }
+}
+
+// 5. Построение индекса по имени
+void buildNameIndex() {
+    nameIndexCount = 0;
+    for (int i = 0; i < recordCount; i++) {
+        nameIndex[nameIndexCount].recordIndex = i;
+        copyString(nameIndex[nameIndexCount].name, records[i].name, 100);
+        nameIndexCount++;
+    }
+    bubbleSortNameIndex();
+    cout << "Построен индекс по имени" << endl;
+}
+
+// 6. Построение индекса по возрасту
+void buildAgeIndex() {
+    ageIndexCount = 0;
+    for (int i = 0; i < recordCount; i++) {
+        ageIndex[ageIndexCount].recordIndex = i;
+        ageIndex[ageIndexCount].age = calculateAge(records[i].birthDate);
+        ageIndexCount++;
+    }
+    quickSortAgeIndex(0, ageIndexCount - 1);
+    cout << "Построен индекс по возрасту" << endl;
+}
+
+// 7. Вывод данных по индексам
+void displayByNameIndex() {
+    if (nameIndexCount == 0) {
+        cout << "Индекс по имени не построен!" << endl;
+        return;
+    }
+    
+    cout << "___Записи отсортированные по имени___" << endl;
+    for (int i = 0; i < nameIndexCount; i++) {
+        printRecord(records[nameIndex[i].recordIndex], nameIndex[i].recordIndex);
+    }
+}
+
+void displayByAgeIndex() {
+    if (ageIndexCount == 0) {
+        cout << "Индекс по возрасту не построен!" << endl;
+        return;
+    }
+    
+    cout << "___Записи отсортированные по возрасту___" << endl;
+    for (int i = 0; i < ageIndexCount; i++) {
+        printRecord(records[ageIndex[i].recordIndex], ageIndex[i].recordIndex);
+    }
+}
+
+// Итерационный бинарный поиск по имени
+int binarySearchByNameIterative(const char* name) {
+    int low = 0;
+    int high = nameIndexCount - 1;
+    
+    while (low <= high) {
+        int mid = (low + high) / 2;
+        int cmp = compareStrings(nameIndex[mid].name, name);
+        
+        if (cmp == 0) {
+            return nameIndex[mid].recordIndex;
+        } else if (cmp < 0) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return -1;
+}
+
+// Рекурсивный бинарный поиск по возрасту
+int binarySearchByAgeRecursive(int low, int high, int age) {
+    if (low > high) {
+        return -1;
+    }
+    
+    int mid = (low + high) / 2;
+    
+    if (ageIndex[mid].age == age) {
+        return ageIndex[mid].recordIndex;
+    } else if (ageIndex[mid].age < age) {
+        return binarySearchByAgeRecursive(mid + 1, high, age);
+    } else {
+        return binarySearchByAgeRecursive(low, mid - 1, age);
+    }
+}
+
+// 8. Поиск элементов
+void searchByName() {
+    if (nameIndexCount == 0) {
+        cout << "Индекс по имени не построен!" << endl;
+        return;
+    }
+    
+    char searchName[100];
+    inputString("Введите имя для поиска: ", searchName, 100);
+    
+    int foundIndex = binarySearchByNameIterative(searchName);
+    
+    if (foundIndex != -1) {
+        cout << "Запись найдена:" << endl;
+        printRecord(records[foundIndex], foundIndex);
+    } else {
+        cout << "Запись с именем '" << searchName << "' не найдена." << endl;
+    }
+}
+
+void searchByAge() {
+    if (ageIndexCount == 0) {
+        cout << "Индекс по возрасту не построен!" << endl;
+        return;
+    }
+    
+    int searchAge = inputInt("Введите возраст для поиска: ", 0);
+    
+    int foundIndex = binarySearchByAgeRecursive(0, ageIndexCount - 1, searchAge);
+    
+    if (foundIndex != -1) {
+        cout << "Запись найдена:" << endl;
+        printRecord(records[foundIndex], foundIndex);
+    } else {
+        cout << "Запись с возрастом " << searchAge << " лет не найдена." << endl;
+    }
+}
+
+// 9. Редактирование записей
+void editRecord() {
+    if (recordCount == 0) {
+        cout << "Нет записей для редактирования." << endl;
+        return;
+    }
+    
+    displayAllRecords();
+    int recordNum = inputInt("Введите номер записи для редактирования: ", 1);
+    
+    if (recordNum < 1 || recordNum > recordCount) {
+        cout << "Неверный номер записи!" << endl;
+        return;
+    }
+    
+    PhoneRecord& record = records[recordNum-1];
+    cout << "Текущие данные:" << endl;
+    printRecord(record, recordNum-1);
+    
+    inputString("Введите новое имя: ", record.name, 100);
+    inputString("Введите новую категорию: ", record.category, 50);
+    
+    cout << "Введите новую дату рождения:" << endl;
+    record.birthDate.day = inputInt("  День: ", 1);
+    record.birthDate.month = inputInt("  Месяц: ", 1);
+    record.birthDate.year = inputInt("  Год: ", 1900);
+    
+    inputString("Введите новый номер телефона: ", record.phoneNumber, 20);
+    
+    if (nameIndexCount > 0) buildNameIndex();
+    if (ageIndexCount > 0) buildAgeIndex();
+    
+    cout << "Запись обновлена!" << endl;
+}
+
+// 10. Удаление записи
+void deleteRecord() {
+    if (recordCount == 0) {
+        cout << "Нет записей для удаления." << endl;
+        return;
+    }
+    
+    displayAllRecords();
+    int recordNum = inputInt("Введите номер записи для удаления: ", 1);
+    
+    if (recordNum < 1 || recordNum > recordCount) {
+        cout << "Неверный номер записи!" << endl;
+        return;
+    }
+    
+    // Сдвиг массива для удаления записи
+    for (int i = recordNum - 1; i < recordCount - 1; i++) {
+        records[i] = records[i + 1];
+    }
+    recordCount--;
+    
+    // Перестроение индексов
+    if (nameIndexCount > 0) buildNameIndex();
+    if (ageIndexCount > 0) buildAgeIndex();
+    
+    cout << "Запись удалена!" << endl;
+}
+
+// Главное меню
+void displayMenu() {
+    cout << endl << "___Телефонный справочник___" << endl;
+    cout << "1. Добавить запись с клавиатуры" << endl;
+    cout << "2. Показать все записи" << endl;
+    cout << "3. Сохранить в файл" << endl;
+    cout << "4. Загрузить из файла" << endl;
+    cout << "5. Построить индекс по имени" << endl;
+    cout << "6. Построить индекс по возрасту" << endl;
+    cout << "7. Показать записи по индексу имени" << endl;
+    cout << "8. Показать записи по индексу возраста" << endl;
+    cout << "9. Поиск по имени (итерационный)" << endl;
+    cout << "10. Поиск по возрасту (рекурсивный)" << endl;
+    cout << "11. Редактировать запись" << endl;
+    cout << "12. Удалить запись" << endl;
+    cout << "13. Выход" << endl;
+    cout << "Выберите действие: ";
+}
+
+int main() {
+    int choice;
+    char filename[100];
+    int append;
+    
+    cout << "Программа 'Телефонный справочник'" << endl;
+    
+    do {
+        displayMenu();
+        cin >> choice;
+        cin.ignore();
+        
+        switch (choice) {
+            case 1: inputRecordFromKeyboard(); break;
+            case 2: displayAllRecords(); break;
+            case 3: 
+                inputString("Введите имя файла: ", filename, 100);
+                cout << "Режим: 0-создать новый, 1-дополнить существующий: ";
+                cin >> append;
+                cin.ignore();
+                saveToFile(filename, append == 1);
+                break;
+            case 4:
+                inputString("Введите имя файла: ", filename, 100);
+                loadFromFile(filename);
+                break;
+            case 5: buildNameIndex(); break;
+            case 6: buildAgeIndex(); break;
+            case 7: displayByNameIndex(); break;
+            case 8: displayByAgeIndex(); break;
+            case 9: searchByName(); break;
+            case 10: searchByAge(); break;
+            case 11: editRecord(); break;
+            case 12: deleteRecord(); break;
+            case 13: cout << "Выход из программы." << endl; break;
+            default: cout << "Неверный выбор!" << endl;
+        }
+    } while (choice != 13);
+    
+    return 0;
+}
